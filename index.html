@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cosmic Curiosity — Explore the Universe</title>
+  <meta name="description" content="A beautiful interactive space fact generator. Discover wonders of the cosmos with every click." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #050510;
+      --bg-card: rgba(15, 15, 35, 0.65);
+      --accent: #7c5cff;
+      --accent-glow: rgba(124, 92, 255, 0.45);
+      --cyan: #00e5ff;
+      --text: #e8e6f0;
+      --text-muted: #a0a0b8;
+      --border: rgba(255, 255, 255, 0.08);
+      --success: #3dffa8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Starfield canvas */
+    #starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Gradient overlays */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 92, 255, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0, 229, 255, 0.08), transparent),
+        radial-gradient(ellipse 50% 30% at 20% 70%, rgba(255, 80, 180, 0.06), transparent);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* Header */
+    header {
+      padding: 48px 0 32px;
+      text-align: center;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, #c4b5fd 50%, #67e8f9 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      font-weight: 300;
+      margin-top: 8px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Category pills */
+    .categories {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 36px 0 28px;
+    }
+
+    .cat-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      backdrop-filter: blur(12px);
+      font-family: inherit;
+    }
+
+    .cat-btn:hover {
+      border-color: rgba(124, 92, 255, 0.4);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .cat-btn.active {
+      background: linear-gradient(135deg, rgba(124, 92, 255, 0.25), rgba(0, 229, 255, 0.15));
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    /* Main fact card */
+    .fact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px 36px;
+      backdrop-filter: blur(20px);
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .fact-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124, 92, 255, 0.5), transparent);
+    }
+
+    .fact-card.animate {
+      animation: cardPulse 0.5s ease;
+    }
+
+    @keyframes cardPulse {
+      0% { transform: scale(0.98); opacity: 0.7; }
+      50% { transform: scale(1.01); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .fact-category {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 16px;
+      opacity: 0.9;
+    }
+
+    .fact-text {
+      font-size: clamp(1.25rem, 3.5vw, 1.55rem);
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--text);
+      margin-bottom: 28px;
+      transition: opacity 0.3s ease;
+    }
+
+    .fact-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .fact-source {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 32px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #5b3fd4);
+      color: #fff;
+      box-shadow: 0 8px 30px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px var(--accent-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-icon {
+      font-size: 1.15rem;
+    }
+
+    /* Favorites section */
+    .favorites-section {
+      margin-top: 56px;
+    }
+
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .favorites-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .fav-item {
+      background: rgba(15, 15, 35, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      backdrop-filter: blur(10px);
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fav-text {
+      font-size: 0.95rem;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .fav-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+      transition: color 0.2s;
+      line-height: 1;
+    }
+
+    .fav-remove:hover {
+      color: #ff6b8a;
+    }
+
+    .empty-favs {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 24px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 48px 0 24px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(20, 20, 40, 0.95);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      z-index: 100;
+      opacity: 0;
+      transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .fact-card {
+        padding: 28px 22px;
+      }
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .btn-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">✦</div>
+        <h1>Cosmic Curiosity</h1>
+      </div>
+      <p class="tagline">One click away from the wonders of the universe. Explore facts that will expand your mind.</p>
+    </header>
+
+    <div class="categories" id="categories">
+      <button class="cat-btn active" data-cat="all">All</button>
+      <button class="cat-btn" data-cat="planets">Planets</button>
+      <button class="cat-btn" data-cat="stars">Stars</button>
+      <button class="cat-btn" data-cat="blackholes">Black Holes</button>
+      <button class="cat-btn" data-cat="cosmology">Cosmology</button>
+      <button class="cat-btn" data-cat="earth">Earth & Life</button>
+    </div>
+
+    <div class="fact-card" id="factCard">
+      <span class="fact-category" id="factCategory">Welcome</span>
+      <p class="fact-text" id="factText">
+        The universe is vast, mysterious, and full of surprises. Hit the button below to discover something extraordinary.
+      </p>
+      <div class="fact-meta">
+        <span class="fact-source" id="factSource">— Cosmic Curiosity</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="surpriseBtn">
+        <span class="btn-icon">✧</span>
+        Surprise Me
+      </button>
+      <button class="btn btn-secondary" id="favoriteBtn">
+        <span class="btn-icon">♡</span>
+        Save Favorite
+      </button>
+    </div>
+
+    <section class="favorites-section">
+      <h2 class="section-title">
+        <span>★</span> Your Favorites
+      </h2>
+      <div class="favorites-list" id="favoritesList">
+        <div class="empty-favs">No favorites yet. Save the facts that blow your mind!</div>
+      </div>
+    </section>
+
+    <footer>
+      Crafted with curiosity by Grok · Inspired by the cosmos<br>
+      <span style="opacity:0.7;font-size:0.85rem;">All facts are based on established scientific knowledge</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========== STARFIELD ==========
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+    let width, height;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    function createStars() {
+      stars = [];
+      const count = Math.floor((width * height) / 4000);
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: Math.random() * 1.6 + 0.3,
+          speed: Math.random() * 0.15 + 0.02,
+          opacity: Math.random() * 0.7 + 0.3,
+          twinkle: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function drawStars() {
+      ctx.clearRect(0, 0, width, height);
+      stars.forEach(s => {
+        s.twinkle += 0.02;
+        const alpha = s.opacity * (0.6 + 0.4 * Math.sin(s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(220, 230, 255, ${alpha})`;
+        ctx.fill();
+
+        // gentle drift
+        s.y += s.speed;
+        if (s.y > height) {
+          s.y = 0;
+          s.x = Math.random() * width;
+        }
+      });
+      requestAnimationFrame(drawStars);
+    }
+
+    window.addEventListener('resize', () => {
+      resize();
+      createStars();
+    });
+    resize();
+    createStars();
+    drawStars();
+
+    // ========== FACTS DATABASE ==========
+    const facts = [
+      // Planets
+      { cat: 'planets', text: 'A day on Venus is longer than a year on Venus. It takes 243 Earth days to rotate once, but only 225 Earth days to orbit the Sun.', source: 'Planetary Science' },
+      { cat: 'planets', text: 'Jupiter’s Great Red Spot is a storm that has been raging for at least 400 years and is large enough to swallow three Earths.', source: 'NASA / Juno Mission' },
+      { cat: 'planets', text: 'Saturn’s rings are made mostly of water ice, with particles ranging from tiny grains to chunks the size of mountains.', source: 'Cassini Mission' },
+      { cat: 'planets', text: 'If you could stand on the surface of Mars, the sunset would appear blue because of the way dust in the thin atmosphere scatters light.', source: 'Curiosity Rover' },
+      { cat: 'planets', text: 'Neptune has the strongest winds in the solar system — reaching speeds of over 2,000 km/h (1,200 mph).', source: 'Voyager 2' },
+      { cat: 'planets', text: 'Mercury has almost no atmosphere, so its surface temperature swings from about 430°C during the day to −180°C at night.', source: 'MESSENGER Mission' },
+
+      // Stars
+      { cat: 'stars', text: 'The nearest star system to Earth, Alpha Centauri, is still over 4.3 light-years away — about 40 trillion kilometers.', source: 'Stellar Astronomy' },
+      { cat: 'stars', text: 'Betelgeuse, a red supergiant in Orion, is so large that if it replaced our Sun, its surface would extend past the orbit of Jupiter.', source: 'Astrophysics' },
+      { cat: 'stars', text: 'Neutron stars are so dense that a sugar-cube-sized amount of their material would weigh about as much as all of humanity combined.', source: 'High-Energy Astrophysics' },
+      { cat: 'stars', text: 'There are roughly 100 to 400 billion stars in the Milky Way galaxy alone.', source: 'Galactic Astronomy' },
+      { cat: 'stars', text: 'Some stars, called hypergiants, can shine with the luminosity of millions of Suns and live for only a few million years.', source: 'Stellar Evolution' },
+      { cat: 'stars', text: 'The Sun converts about 4 million tons of matter into energy every second through nuclear fusion.', source: 'Solar Physics' },
+
+      // Black Holes
+      { cat: 'blackholes', text: 'At the center of our galaxy sits Sagittarius A*, a supermassive black hole with a mass of about 4 million Suns.', source: 'Event Horizon Telescope' },
+      { cat: 'blackholes', text: 'Time slows down dramatically near a black hole’s event horizon. To a distant observer, an object falling in appears to freeze in time.', source: 'General Relativity' },
+      { cat: 'blackholes', text: 'Stellar-mass black holes form when massive stars collapse. The largest known stellar black holes can be over 100 times the mass of the Sun.', source: 'Gravitational Wave Astronomy' },
+      { cat: 'blackholes', text: 'Black holes don’t “suck” things in like a vacuum cleaner. Objects must come within the event horizon; otherwise they can orbit safely.', source: 'Astrophysics' },
+      { cat: 'blackholes', text: 'Hawking radiation predicts that black holes slowly evaporate over immense timescales by emitting particles near the event horizon.', source: 'Theoretical Physics' },
+      { cat: 'blackholes', text: 'In 2019, the Event Horizon Telescope captured the first image of a black hole’s shadow in the galaxy M87.', source: 'EHT Collaboration' },
+
+      // Cosmology
+      { cat: 'cosmology', text: 'The observable universe is about 93 billion light-years in diameter, even though the universe is only 13.8 billion years old, because space itself has been expanding.', source: 'Cosmology' },
+      { cat: 'cosmology', text: 'About 95% of the universe is made of dark matter and dark energy — substances we cannot directly see or fully explain yet.', source: 'Modern Cosmology' },
+      { cat: 'cosmology', text: 'The cosmic microwave background is leftover radiation from the Big Bang, now cooled to just 2.7 degrees above absolute zero.', source: 'CMB Studies' },
+      { cat: 'cosmology', text: 'If the entire history of the universe were compressed into one year, modern humans would appear only in the last few seconds of December 31.', source: 'Cosmic Calendar (Sagan)' },
+      { cat: 'cosmology', text: 'The universe is expanding, and the rate of expansion is accelerating due to dark energy.', source: 'Supernova Cosmology' },
+      { cat: 'cosmology', text: 'There may be more stars in the observable universe than grains of sand on all the beaches of Earth — roughly 10²² to 10²⁴ stars.', source: 'Astronomical Estimates' },
+
+      // Earth & Life
+      { cat: 'earth', text: 'Earth is the only planet in our solar system known to have plate tectonics and a global magnetic field that protects us from solar wind.', source: 'Planetary Science' },
+      { cat: 'earth', text: 'The water in your body is older than the Sun. Much of Earth’s water is thought to have come from icy asteroids and comets billions of years ago.', source: 'Astrobiology / Geochemistry' },
+      { cat: 'earth', text: 'If you could fly a plane to the Sun at typical jet speeds, it would take roughly 19 years of continuous flight.', source: 'Simple Calculation' },
+      { cat: 'earth', text: 'There are more possible chess games than atoms in the observable universe — a reminder of how vast combinatorial space can be.', source: 'Mathematics / Chess Theory' },
+      { cat: 'earth', text: 'The International Space Station travels at about 28,000 km/h and completes an orbit of Earth roughly every 90 minutes.', source: 'NASA' },
+      { cat: 'earth', text: 'Life on Earth has existed for at least 3.5 to 3.8 billion years, yet complex multicellular life only became common in the last 600 million years.', source: 'Paleobiology' }
+    ];
+
+    // ========== APP LOGIC ==========
+    let currentCat = 'all';
+    let currentFact = null;
+    let favorites = JSON.parse(localStorage.getItem('cosmicFavorites') || '[]');
+
+    const factCard = document.getElementById('factCard');
+    const factCategory = document.getElementById('factCategory');
+    const factText = document.getElementById('factText');
+    const factSource = document.getElementById('factSource');
+    const surpriseBtn = document.getElementById('surpriseBtn');
+    const favoriteBtn = document.getElementById('favoriteBtn');
+    const favoritesList = document.getElementById('favoritesList');
+    const toast = document.getElementById('toast');
+    const catButtons = document.querySelectorAll('.cat-btn');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    function getFilteredFacts() {
+      if (currentCat === 'all') return facts;
+      return facts.filter(f => f.cat === currentCat);
+    }
+
+    function showRandomFact() {
+      const pool = getFilteredFacts();
+      if (pool.length === 0) return;
+
+      let fact;
+      // Avoid immediate repeat if possible
+      do {
+        fact = pool[Math.floor(Math.random() * pool.length)];
+      } while (pool.length > 1 && currentFact && fact.text === currentFact.text);
+
+      currentFact = fact;
+
+      factCard.classList.remove('animate');
+      void factCard.offsetWidth; // trigger reflow
+      factCard.classList.add('animate');
+
+      const labels = {
+        planets: 'Planets',
+        stars: 'Stars',
+        blackholes: 'Black Holes',
+        cosmology: 'Cosmology',
+        earth: 'Earth & Life'
+      };
+
+      factCategory.textContent = labels[fact.cat] || fact.cat;
+      factText.textContent = fact.text;
+      factSource.textContent = '— ' + fact.source;
+    }
+
+    function saveFavorite() {
+      if (!currentFact) {
+        showToast('Generate a fact first!');
+        return;
+      }
+      const exists = favorites.some(f => f.text === currentFact.text);
+      if (exists) {
+        showToast('Already in your favorites');
+        return;
+      }
+      favorites.unshift({ ...currentFact });
+      localStorage.setItem('cosmicFavorites', JSON.stringify(favorites));
+      renderFavorites();
+      showToast('Saved to favorites ★');
+    }
+
+    function removeFavorite(index) {
+      favorites.splice(index, 1);
+      localStorage.setItem('cosmicFavorites', JSON.stringify(favorites));
+      renderFavorites();
+      showToast('Removed from favorites');
+    }
+
+    function renderFavorites() {
+      if (favorites.length === 0) {
+        favoritesList.innerHTML = '<div class="empty-favs">No favorites yet. Save the facts that blow your mind!</div>';
+        return;
+      }
+      favoritesList.innerHTML = favorites.map((f, i) => `
+        <div class="fav-item">
+          <p class="fav-text">${f.text}</p>
+          <button class="fav-remove" data-index="${i}" title="Remove">✕</button>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.fav-remove').forEach(btn => {
+        btn.addEventListener('click', () => removeFavorite(+btn.dataset.index));
+      });
+    }
+
+    // Event listeners
+    surpriseBtn.addEventListener('click', showRandomFact);
+    favoriteBtn.addEventListener('click', saveFavorite);
+
+    catButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        catButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.dataset.cat;
+        showRandomFact();
+      });
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        showRandomFact();
+      }
+    });
+
+    // Init
+    renderFavorites();
+    // Show first fact after a short delay for polish
+    setTimeout(showRandomFact, 600);
+  </script>
+</body>
+</html>
